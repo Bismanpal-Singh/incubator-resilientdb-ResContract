@@ -152,9 +152,9 @@ program
         'bazel-bin',
         'service',
         'tools',
-        'contract',
+        'kv',
         'api_tools',
-        'contract_tools'
+        'contract_service_tools'
       );
 
       if (!fs.existsSync(configPath)) {
@@ -163,7 +163,19 @@ program
         process.exit(1);
       }
 
-      await handleExecFile(commandPath, ['create', '-c', configPath]);
+      // Create JSON command file
+      const jsonConfig = { command: 'create_account' };
+      const jsonConfigPath = path.join(os.tmpdir(), `create_account_${Date.now()}.json`);
+      fs.writeFileSync(jsonConfigPath, JSON.stringify(jsonConfig, null, 2));
+
+      try {
+        await handleExecFile(commandPath, ['-c', configPath, '--config_file', jsonConfigPath]);
+      } finally {
+        // Clean up temporary file
+        if (fs.existsSync(jsonConfigPath)) {
+          fs.unlinkSync(jsonConfigPath);
+        }
+      }
     } catch (error) {
       logger.error(`Error executing create command: ${error.message}`);
       console.error(`Error: ${error.message}`);
@@ -260,27 +272,32 @@ program
         'bazel-bin',
         'service',
         'tools',
-        'contract',
+        'kv',
         'api_tools',
-        'contract_tools'
+        'contract_service_tools'
       );
 
-      const argList = [
-        'deploy',
-        '-c',
-        configPath,
-        '-p',
-        contract,
-        '-n',
-        name,
-        '-a',
-        args,
-        '-m',
-        owner,
-      ];
+      // Create JSON command file
+      const jsonConfig = {
+        command: 'deploy',
+        contract_path: contract,
+        contract_name: name,
+        init_params: args,
+        owner_address: owner
+      };
+      const jsonConfigPath = path.join(os.tmpdir(), `deploy_${Date.now()}.json`);
+      fs.writeFileSync(jsonConfigPath, JSON.stringify(jsonConfig, null, 2));
 
-      const output = await handleSpawnProcess(commandPath, argList);
-
+      let output;
+      try {
+        output = await handleSpawnProcess(commandPath, ['-c', configPath, '--config_file', jsonConfigPath]);
+      } finally {
+        // Clean up temporary file
+        if (fs.existsSync(jsonConfigPath)) {
+          fs.unlinkSync(jsonConfigPath);
+        }
+      }
+      
       const outputLines = output.split('\n');
       let ownerAddress = '';
       let contractAddress = '';
@@ -351,9 +368,9 @@ program
         'bazel-bin',
         'service',
         'tools',
-        'contract',
+        'kv',
         'api_tools',
-        'contract_tools'
+        'contract_service_tools'
       );
 
       if (!fs.existsSync(configPath)) {
@@ -362,13 +379,21 @@ program
         process.exit(1);
       }
 
-      await handleExecFile(commandPath, [
-        'add_address',
-        '-c',
-        configPath,
-        '-e',
-        externalAddress,
-      ]);
+      const jsonConfig = {
+        command: 'add_address',
+        address: externalAddress
+      };
+      const jsonConfigPath = path.join(os.tmpdir(), `add_address_${Date.now()}.json`);
+      fs.writeFileSync(jsonConfigPath, JSON.stringify(jsonConfig, null, 2));
+      
+      try {
+        await handleExecFile(commandPath, ['-c', configPath, '--config_file', jsonConfigPath]);
+      } finally {
+        // Clean up temporary file
+        if (fs.existsSync(jsonConfigPath)) {
+          fs.unlinkSync(jsonConfigPath);
+        }
+      }
     } catch (error) {
       logger.error(`Error executing add_address command: ${error.message}`);
       console.error(`Error: ${error.message}`);
